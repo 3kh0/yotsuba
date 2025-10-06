@@ -1,0 +1,28 @@
+{
+  "name": "yotsuba",
+  "version": "1.0.0",
+  "description": "Anonymous reply Slack bot with deterministic identicons",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "slack",
+    "bot",
+    "anonymous",
+    "identicon"
+  ],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.18.1+sha512.77a884a165cbba2d8d1c19e3b4880eee6d2fcabd0d879121e282196b80042351d5eb3ca0935fa599da1dc51265cc68816ad2bddd2a2de5ea9fdf92adbec7cd34",
+  "dependencies": {
+    "@slack/bolt": "^4.4.0",
+    "canvas": "^3.2.0",
+    "dotenv": "^17.2.3",
+    "ioredis": "^5.8.1",
+    "jdenticon": "^3.3.0"
+  }
+}

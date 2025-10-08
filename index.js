@@ -2,6 +2,7 @@ import 'dotenv/config';
 import pkg from '@slack/bolt';
 const { App } = pkg;
 import { genHash, genShort } from './lib/hash.js';
+import { access, post, openModal } from './lib/msg.js';
 
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
@@ -22,6 +23,15 @@ app.shortcut('anon_reply', async ({ shortcut, ack, client }) => {
   try {
     const { user, message, channel, trigger_id } = shortcut;
     const threadTs = message.thread_ts || message.ts;
+
+    if (!access(channel.id)) {
+      await client.chat.postEphemeral({
+        channel: channel.id,
+        user: user.id,
+        text: 'I am not whitelisted to post here. Please contact the bot host if this is a mistake.',
+      });
+      return;
+    }
     
     const metadata = JSON.stringify({
       userId: user.id,
@@ -29,41 +39,7 @@ app.shortcut('anon_reply', async ({ shortcut, ack, client }) => {
       threadTs,
     });
 
-    await client.views.open({
-      trigger_id,
-      view: {
-        type: 'modal',
-        callback_id: 'anon_submit',
-        private_metadata: metadata,
-        title: {
-          type: 'plain_text',
-          text: 'Anonymous Reply',
-        },
-        blocks: [
-          {
-            type: 'input',
-            block_id: 'reply_block',
-            element: {
-              type: 'plain_text_input',
-              action_id: 'reply_text',
-              multiline: true,
-              placeholder: {
-                type: 'plain_text',
-                text: 'Type your response here. You will be an anonymous user.',
-              },
-            },
-            label: {
-              type: 'plain_text',
-              text: 'Your reply',
-            },
-          },
-        ],
-        submit: {
-          type: 'plain_text',
-          text: 'Submit',
-        },
-      },
-    });
+    await openModal(client, trigger_id, metadata);
   } catch (error) {
     console.error('modal error', error);
   }
@@ -76,6 +52,15 @@ app.view('anon_submit', async ({ ack, body, view, client }) => {
     const metadata = JSON.parse(view.private_metadata);
     const { userId, channelId, threadTs } = metadata;
     
+    if (!access(channelId)) {
+      await client.chat.postEphemeral({
+        channel: channelId,
+        user: userId,
+        text: 'I am not whitelisted to post here. Please contact the bot host if this is a mistake.',
+      });
+      return;
+    }
+    
     const reply = view.state.values.reply_block.reply_text.value;
     
     if (!reply || reply.trim().length === 0) {
@@ -84,13 +69,7 @@ app.view('anon_submit', async ({ ack, body, view, client }) => {
     const hash = genHash(userId, threadTs);
     const profile = await buildProfile(hash, client);
     
-    await client.chat.postMessage({
-      channel: channelId,
-      thread_ts: threadTs,
-      text: reply,
-      username: `Anon-${profile.shorthand}`,
-      icon_url: profile.iconUrl,
-    });
+    await post(client, channelId, threadTs, reply, profile);
   } catch (error) {
     console.error('error on anon_submit', error);
   }
